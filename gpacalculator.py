@@ -36,7 +36,6 @@ class term:
         termdatecheck(self, startingindex, ogfilelist, accessdate)        
 
 def main():
-    global desiredgpa
     desiredgpa = sys.argv[2]
     transcript = sys.argv[1]
 
@@ -50,9 +49,9 @@ def main():
         print("Please enter a GPA between 0.0 and 4.0")
     
     convertpdftotext()
-    parsedatafromtextfile('output.txt')
-    calculategpaneeded()
-    printresults()
+    creditsyetearned, creditearned, pointsearned, name, date = parsedatafromtextfile('output.txt')
+    gpaneeded, highestgpapossible = calculategpaneeded(desiredgpa, creditsyetearned, pointsearned, creditearned)
+    printresults(desiredgpa, gpaneeded, highestgpapossible, name, creditsyetearned)
 
 def convertpdftotext():
 #openPDF file and read, open output file
@@ -96,12 +95,10 @@ def convertpdftotext():
 #method that gets data necessary to calculate desired grades from transcript
 def parsedatafromtextfile(textfile):
     #opening and reading old file to get header info
-    global creditsyetearned
-    global lastcompletedtermindex
     texttranscriptfile = open(textfile, 'r+')
     lines = texttranscriptfile.readlines()
     ogfilelines = assignlines(lines)
-    beginindex = fixheaderinfo(ogfilelines)
+    beginindex, name, date = fixheaderinfo(ogfilelines)
     
     #creating term objects
     termlist = []
@@ -125,13 +122,13 @@ def parsedatafromtextfile(textfile):
         parseGPA(termlist[c], ogfilelines)
         lastcompletedterm = newcounter - 2
 
-    parsecumGPA(termlist[lastcompletedterm], ogfilelines)
+    creditearned, pointsearned = parsecumGPA(termlist[lastcompletedterm], ogfilelines)
     creditsyetearned = getcreditsyetearned(termlist)
+    return creditsyetearned, creditearned, pointsearned, name, date
 
 #simple function to assign each line in the file to an index in an array for later use           
 def assignlines(originalfilelines):
     counter = 0
-    global ogfilelines
     ogfilelines = ["" for x in range(len(originalfilelines))]
     for line in originalfilelines:
         ogfilelines[counter] = line
@@ -139,9 +136,8 @@ def assignlines(originalfilelines):
     return ogfilelines
 
 def fixheaderinfo(ogfilelines):
-    global name
     name = ""
-    global date
+    date = ""
     foundtitle = 0
     foundid = 0
     begin = 0
@@ -162,7 +158,7 @@ def fixheaderinfo(ogfilelines):
         if "Beginning" in ogfilelines[counter]:
             begin = counter
         counter += 1
-    return begin
+    return begin, name, date
 
 #find and parse out GPA and credits of a term
 def parseGPA(self, ogfilelist):
@@ -183,9 +179,6 @@ def parseGPA(self, ogfilelist):
 #method to parse out cumulative GPA from transcript
 def parsecumGPA(self, ogfilelist):
     foundGPA = 0
-    global cumulativegpa
-    global creditearned
-    global pointsearned
     counter = self.startindex
     while foundGPA == 0:
         if "Cum" in ogfilelist[counter] and "GPA" in ogfilelist[counter+1]:
@@ -202,6 +195,7 @@ def parsecumGPA(self, ogfilelist):
             creditearned = float(ogfilelist[counter+1][indexlist[a-1]:indexlist[a]])
         if a == 4:
             pointsearned = ogfilelist[counter+1][indexlist[a-1]:indexlist[a]]
+    return creditearned, pointsearned
 
 #find total number of credits earned in a term
 def getcreditsyetearned(termlist):
@@ -226,7 +220,7 @@ def termdatecheck(self, startingindex, ogfilelist, accessdate):
         index = stringdate.find(")")
         stringdate = stringdate[:index]
         month, day, year = splitdates(stringdate)
-        accessmonth, accessday, accessyear = splitdates(date)
+        accessmonth, accessday, accessyear = splitdates(accessdate)
 
         #comparing dates to see if the term ended before the transcript was downloaded
         dateaccess = datetime.date(accessyear, accessmonth, accessday)
@@ -264,19 +258,17 @@ def splitwords(t, ii, ia):
     
 #find both highest possible gpa if all A's in next credits
 #and find the gpa needed based on goal GPA given
-def calculategpaneeded():
-    global gpaneeded
-    global highestgpapossible
-
+def calculategpaneeded(desiredgpa, creditsyetearned, pointsearned, creditearned):
     #calculate both possible highest gpa and gpa needed if possible
     futurepointspossible = 4.0 * float(creditsyetearned)
     highestgpapossible = (futurepointspossible + float(pointsearned))/(float(creditearned) + float(creditsyetearned))
     futurepointsearned = (float(desiredgpa)*(float(creditearned) + float(creditsyetearned)) - float(pointsearned))
     gpaneeded = futurepointsearned/creditsyetearned
+    return gpaneeded, highestgpapossible
 
 #simply print calculated values to the console in a readable format
-def printresults():
-    checknamestring()
+def printresults(desiredgpa, highestgpapossible, gpaneeded, name, creditsyetearned):
+    updatedname = checknamestring(name)
     if gpaneeded > 4.0:
         highestpossiblegpa = highestgpapossible
         high = str(highestpossiblegpa)
@@ -289,12 +281,12 @@ def printresults():
         print(updatedname + "to maintain a " + desiredgpa + " GPA you need to earn a GPA of " + gpaneededstring + " over the next " + str(creditsyetearned) + " credits you have scheduled already.")
 
 #make sure name has proper spacing
-def checknamestring():
-    global updatedname
+def checknamestring(name):
     updatedname = ""
     for a in range(0, len(name)):
         updatedname += name[a]
         if name[a].islower() and a <len(name)-1 and name[a+1].isupper():
             updatedname += " "
+    return updatedname
 
 main()
