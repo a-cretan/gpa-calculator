@@ -137,7 +137,6 @@ def assignlines(originalfilelines):
 
 def fixheaderinfo(ogfilelines):
     name = ""
-    date = ""
     foundtitle = 0
     foundid = 0
     begin = 0
@@ -267,7 +266,7 @@ def calculategpaneeded(desiredgpa, creditsyetearned, pointsearned, creditearned)
     return gpaneeded, highestgpapossible
 
 #simply print calculated values to the console in a readable format
-def printresults(desiredgpa, highestgpapossible, gpaneeded, name, creditsyetearned):
+def printresults(desiredgpa, gpaneeded, highestgpapossible, name, creditsyetearned):
     updatedname = checknamestring(name)
     if gpaneeded > 4.0:
         highestpossiblegpa = highestgpapossible
